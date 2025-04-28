@@ -111,6 +111,7 @@ contract SupplyChain {
     ) public {
         require(bytes(_name).length > 5, "Proper name is required");
         require(!userExist[msg.sender], "User already exists");
+        require(msg.sender != owner, "Owner can not be registered as user.");
 
         users[msg.sender] = User(
             msg.sender,
@@ -135,6 +136,7 @@ contract SupplyChain {
         require(_wallet != address(0), "Invalid address");
         require(bytes(_name).length > 5, "Proper name is required");
         require(!userExist[_wallet], "User already exists");
+        require(_wallet != owner, "Owner can not be registered as user.");
 
         users[_wallet] = User(_wallet, _name, _place, _role, UserStatus.Active);
         userExist[_wallet] = true;
@@ -165,6 +167,7 @@ contract SupplyChain {
                 currentStatus == UserStatus.Pending,
                 "User must be Pending to be Rejected"
             );
+            // userExist[_wallet] = false; //will work on future
         } else if (newStatus == UserStatus.Active) {
             require(
                 currentStatus == UserStatus.Pending ||
@@ -218,6 +221,7 @@ contract SupplyChain {
             _expiryDate > _manufacturedDate,
             "Expiry date must be after manufacture date."
         );
+
         productCount++;
         products[productCount] = Product(
             _name,
@@ -261,6 +265,12 @@ contract SupplyChain {
             "Unauthorized role for this stage"
         );
 
+        require(
+            trackingProducts[_productId][productStage[_productId]]
+                .handlerWallet == msg.sender,
+            ""
+        );
+
         products[_productId].stage = _newStage;
         productStage[_productId]++;
         userProducts[msg.sender].push(_productId);
@@ -275,6 +285,8 @@ contract SupplyChain {
             _newStage,
             _remark
         );
+        trackingProducts[_productId - 1][productStage[_productId]]
+            .exitTime = block.timestamp;
 
         emit ProductStageUpdated(_productId, _newStage);
     }

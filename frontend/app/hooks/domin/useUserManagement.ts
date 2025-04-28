@@ -1,9 +1,8 @@
 import { useState, useCallback } from "react";
-import { IUser } from "../../types/interface";
-import { Role, UserStatus } from "../../types/enums";
 import { useSupplyChainContract } from "../blockchain/useSupplyChainContract";
+import { IBatch, IProduct } from "../../types/interface";
 
-export const useUserManagement = () => {
+export const useBatchManagement = () => {
   const contract = useSupplyChainContract();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,32 +18,15 @@ export const useUserManagement = () => {
     return true;
   }, [contract]);
 
-  const addUser = useCallback(
+  const createBatch = useCallback(
     async (
-      wallet: string,
       name: string,
-      place: string,
-      role: Role
-    ): Promise<{
-      wallet: string;
-      name: string;
-      role: Role;
-      status: UserStatus;
-    } | null> => {
+      description: string
+    ): Promise<{ batchId: number; name: string } | null> => {
       if (!validateContract()) return null;
 
-      if (!wallet || !name || !place) {
-        setError("All fields are required.");
-        return null;
-      }
-
-      if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
-        setError("Invalid wallet address.");
-        return null;
-      }
-
-      if (name.length <= 5) {
-        setError("Name must be longer than 5 characters.");
+      if (!name.trim() || !description.trim()) {
+        setError("Name and description are required.");
         return null;
       }
 
@@ -52,7 +34,7 @@ export const useUserManagement = () => {
       setError(null);
 
       try {
-        const tx = await contract!.addUser(wallet, name, place, role);
+        const tx = await contract!.createBatch(name, description);
         const receipt = await tx.wait();
 
         for (const log of receipt.logs) {
@@ -60,26 +42,23 @@ export const useUserManagement = () => {
 
           try {
             const parsedLog = contract?.interface.parseLog(log);
-            if (parsedLog?.name === "UserAdded") {
-              const [userWallet, userName, userRole, userStatus] =
-                parsedLog.args;
+            if (parsedLog?.name === "BatchCreated") {
+              const [batchId, batchName] = parsedLog.args;
               return {
-                wallet: userWallet,
-                name: userName,
-                role: Number(userRole),
-                status: Number(userStatus),
+                batchId: Number(batchId),
+                name: batchName,
               };
             }
           } catch (error) {
             setError("Failed to parse event log.");
           }
         }
-        setError("User added successfully!, but no event found in the logs.");
+
+        setError("Batch created successfully, but no event found in logs.");
         return null;
       } catch (err: any) {
-        console.log(err);
         setError(
-          "Error adding user: " +
+          "Error creating batch: " +
             (err?.reason ||
               err?.revert?.args?.[0] ||
               err?.toString()?.match(/: (.*?)(?=\s*\()/)?.[1] ||
@@ -93,147 +72,19 @@ export const useUserManagement = () => {
     [contract, validateContract]
   );
 
-  const registerUser = useCallback(
-    async (
-      name: string,
-      place: string,
-      role: Role
-    ): Promise<{
-      wallet: string;
-      name: string;
-      role: Role;
-      status: UserStatus;
-    } | null> => {
-      if (!validateContract()) return null;
-      if (name.length <= 5) {
-        setError("Name must be longer than 5 characters.");
-        return null;
-      }
-
-      setLoading(true);
-      setError(null);
-      try {
-        const tx = await contract!.registerUser(name, place, role);
-        const receipt = await tx.wait();
-
-        for (const log of receipt.logs) {
-          if (log.transactionHash !== receipt.hash) continue;
-
-          try {
-            const parsedLog = contract?.interface.parseLog(log);
-            if (parsedLog?.name === "UserAdded") {
-              const [userWallet, userName, userRole, userStatus] =
-                parsedLog.args;
-              return {
-                wallet: userWallet,
-                name: userName,
-                role: Number(userRole),
-                status: Number(userStatus),
-              };
-            }
-          } catch (error) {
-            setError("Failed to parse event log.");
-          }
-        }
-        setError("User registered successfully!, but no event found in the logs.");
-        return null;
-      } catch (err: any) {
-        setError(
-          "Error registering user: " +
-            (err?.reason ||
-              err?.revert?.args?.[0] ||
-              err?.toString()?.match(/: (.*?)(?=\s*\()/)?.[1] ||
-              "Unknown error")
-        );
-        return null;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [contract, validateContract]
-  );
-
-  const updateUserStatus = useCallback(
-    async (
-      wallet: string,
-      newStatus: UserStatus
-    ): Promise<{
-      wallet: string;
-      oldStatus: UserStatus;
-      newStatus: UserStatus;
-    } | null> => {
-      if (!validateContract()) return null;
-
-      if (!wallet) {
-        setError("Wallet address is required.");
-        return null;
-      }
-
-      if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
-        setError("Invalid wallet address.");
-        return null;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const tx = await contract!.updateUserStatus(wallet, newStatus);
-        const receipt = await tx.wait();
-
-        for (const log of receipt.logs) {
-          if (log.transactionHash !== receipt.hash) continue;
-
-          try {
-            const parsedLog = contract?.interface.parseLog(log);
-            if (parsedLog?.name === "UserStatusUpdated") {
-              const [userWallet, oldStatus, updatedStatus] = parsedLog.args;
-              return {
-                wallet: userWallet,
-                oldStatus: Number(oldStatus),
-                newStatus: Number(updatedStatus),
-              };
-            }
-          } catch (error: any) {
-            setError("Failed to parse event log.");
-          }
-        }
-        setError(
-          "User status updated successfully!, but no event found in the logs."
-        );
-        return null;
-      } catch (err: any) {
-        setError(
-          "Error updating user status: " +
-            (err?.reason ||
-              err?.revert?.args?.[0] ||
-              err?.toString()?.match(/: (.*?)(?=\s*\()/)?.[1] ||
-              "Unknown error")
-        );
-        return null;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [contract, validateContract]
-  );
-
-  const getUserDetails = useCallback(
-    async (userAddress: string): Promise<IUser | null> => {
+  const getBatchDetails = useCallback(
+    async (batchId: number): Promise<IBatch | null> => {
       if (!validateContract()) return null;
 
       try {
-        const user = await contract!.users(userAddress);
+        const batch = await contract!.batches(batchId);
         return {
-          wallet: user.wallet,
-          name: user.name,
-          place: user.place,
-          role: Number(user.role),
-          status: Number(user.status),
-        };
+          name: batch.name,
+          description: batch.description,
+        } as IBatch;
       } catch (err: any) {
         setError(
-          "Error fetching user details: " +
+          "Error fetching batch details: " +
             (err?.reason ||
               err?.revert?.args?.[0] ||
               err?.toString()?.match(/: (.*?)(?=\s*\()/)?.[1] ||
@@ -245,40 +96,49 @@ export const useUserManagement = () => {
     [contract, validateContract]
   );
 
-  const getAllUsers = useCallback(async (): Promise<IUser[]> => {
-    if (!validateContract()) return [];
+  const getAllProductsPerBatch = useCallback(
+    async (batchNo: number): Promise<IProduct[]> => {
+      if (!validateContract()) return [];
 
-    try {
-      const users = await contract!.getAllUserList();
-      if (!users || users.length === 0) {
-        setError("No users found.");
+      setLoading(true);
+      setError(null);
+
+      try {
+        const products = await contract!.getAllProductsPerBatch(batchNo);
+        if (!products || products.length === 0) {
+          setError("No products found for this batch.");
+          return [];
+        }
+        return products.map((p: any) => ({
+          name: p.name,
+          batchNo: Number(p.batchNo),
+          stage: Number(p.stage),
+          productType: p.productType,
+          description: p.description,
+          manufacturedDate: new Date(Number(p.manufacturedDate) * 1000),
+          expiryDate: new Date(Number(p.expiryDate) * 1000),
+          price: Number(p.price),
+        }));
+      } catch (err: any) {
+        setError(
+          "Error fetching products: " +
+            (err?.reason ||
+              err?.revert?.args?.[0] ||
+              err?.toString()?.match(/: (.*?)(?=\s*\()/)?.[1] ||
+              "Unknown error")
+        );
         return [];
+      } finally {
+        setLoading(false);
       }
-      return users.map((user: any) => ({
-        wallet: user.wallet,
-        name: user.name,
-        place: user.place,
-        role: Number(user.role),
-        status: Number(user.status),
-      }));
-    } catch (err: any) {
-      setError(
-        "Error fetching user list: " +
-          (err?.reason ||
-            err?.revert?.args?.[0] ||
-            err?.toString()?.match(/: (.*?)(?=\s*\()/)?.[1] ||
-            "Unknown error")
-      );
-      return [];
-    }
-  }, [contract, validateContract]);
+    },
+    [contract, validateContract]
+  );
 
   return {
-    addUser,
-    registerUser,
-    updateUserStatus,
-    getUserDetails,
-    getAllUsers,
+    createBatch,
+    getBatchDetails,
+    getAllProductsPerBatch,
     loading,
     error,
   };
