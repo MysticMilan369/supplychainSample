@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useSupplyChainContract } from "../blockchain/useSupplyChainContract";
-import { IBatch, IProduct } from "../../types/interface";
+import { IBatch } from "../../types/interface";
+// import { IProduct } from "../../types/interface";
 
 export const useBatchManagement = () => {
   const contract = useSupplyChainContract();
@@ -96,49 +97,49 @@ export const useBatchManagement = () => {
     [contract, validateContract]
   );
 
-  const getAllProductsPerBatch = useCallback(
-    async (batchNo: number): Promise<IProduct[]> => {
-      if (!validateContract()) return [];
+  // const getAllProductsPerBatch = useCallback(
+  //   async (batchNo: number): Promise<IProduct[]> => {
+  //     if (!validateContract()) return [];
 
-      setLoading(true);
-      setError(null);
+  //     setLoading(true);
+  //     setError(null);
 
-      try {
-        const products = await contract!.getAllProductsPerBatch(batchNo);
-        if (!products || products.length === 0) {
-          setError("No products found for this batch.");
-          return [];
-        }
-        return products.map((p: any) => ({
-          name: p.name,
-          batchNo: Number(p.batchNo),
-          stage: Number(p.stage),
-          productType: p.productType,
-          description: p.description,
-          manufacturedDate: new Date(Number(p.manufacturedDate) * 1000),
-          expiryDate: new Date(Number(p.expiryDate) * 1000),
-          price: Number(p.price),
-        }));
-      } catch (err: any) {
-        setError(
-          "Error fetching products: " +
-            (err?.reason ||
-              err?.revert?.args?.[0] ||
-              err?.toString()?.match(/: (.*?)(?=\s*\()/)?.[1] ||
-              "Unknown error")
-        );
-        return [];
-      } finally {
-        setLoading(false);
-      }
-    },
-    [contract, validateContract]
-  );
+  //     try {
+  //       const products = await contract!.getAllProductsPerBatch(batchNo);
+  //       if (!products || products.length === 0) {
+  //         setError("No products found for this batch.");
+  //         return [];
+  //       }
+  //       return products.map((p: any) => ({
+  //         name: p.name,
+  //         batchNo: Number(p.batchNo),
+  //         stage: Number(p.stage),
+  //         productType: p.productType,
+  //         description: p.description,
+  //         manufacturedDate: new Date(Number(p.manufacturedDate) * 1000),
+  //         expiryDate: new Date(Number(p.expiryDate) * 1000),
+  //         price: Number(p.price),
+  //       }));
+  //     } catch (err: any) {
+  //       setError(
+  //         "Error fetching products: " +
+  //           (err?.reason ||
+  //             err?.revert?.args?.[0] ||
+  //             err?.toString()?.match(/: (.*?)(?=\s*\()/)?.[1] ||
+  //             "Unknown error")
+  //       );
+  //       return [];
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   },
+  //   [contract, validateContract]
+  // );
 
   return {
     createBatch,
     getBatchDetails,
-    getAllProductsPerBatch,
+    // getAllProductsPerBatch,
     loading,
     error,
   };
