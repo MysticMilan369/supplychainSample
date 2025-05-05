@@ -24,12 +24,12 @@ function saveFrontendFiles(contract_address) {
     JSON.stringify({ SupplyChain: contract_address }, undefined, 2)
   );
 
-  // const SupplyChainArtifact = artifacts.readArtifactSync("SupplyChain");
+  const SupplyChainArtifact = artifacts.readArtifactSync("SupplyChain");
 
-  // fs.writeFileSync(
-  //   path.join(contractsDir, "SupplyChain.json"),
-  //   JSON.stringify(SupplyChainArtifact, null, 2)
-  // );
+  fs.writeFileSync(
+    path.join(contractsDir, "SupplyChain.json"),
+    JSON.stringify(SupplyChainArtifact, null, 2)
+  );
 }
 
 main()
