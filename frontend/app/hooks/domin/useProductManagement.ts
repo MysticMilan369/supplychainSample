@@ -183,7 +183,7 @@ export function useProductManagement() {
 
           try {
             const parsedLog = contract?.interface.parseLog(log);
-            if (parsedLog?.name === "ProductLost") {
+            if (parsedLog?.name === "ProductStageUpdated") {
               return true;
             }
           } catch (error) {
@@ -191,7 +191,7 @@ export function useProductManagement() {
           }
         }
 
-        setError("ProductLost event not found in transaction receipt.");
+        setError("ProductStageUpdated event not found in transaction receipt.");
         return false;
       } catch (err: any) {
         setError(
